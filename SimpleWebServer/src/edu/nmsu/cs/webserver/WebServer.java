@@ -21,7 +21,7 @@ public class WebServer
 {
 	private ServerSocket	socket;
 
-	private boolean				running;
+	private boolean running;
 
 	/**
 	 * Constructor
@@ -43,14 +43,17 @@ public class WebServer
 		Socket workerSocket;
 		WebWorker worker;
 		try
-		{
+		{	
+			// serverSocket listens for a port
 			socket = new ServerSocket(port);
 		}
+		// more appropriate to catch an io exception, but no need to change
 		catch (Exception e)
-		{
+		{	
 			System.err.println("Error binding to port " + port + ": " + e);
 			return false;
 		}
+		// infinite loop, could be terminated through user input
 		while (true)
 		{
 			try
@@ -84,24 +87,29 @@ public class WebServer
 	 **/
 	public static void main(String args[])
 	{
-		int port = 8080;
+		int port = 8083;
+		// program ends
 		if (args.length > 1)
 		{
 			System.err.println("Usage: java Webserver <portNumber>");
 			return;
 		}
+		
 		else if (args.length == 1)
 		{
 			try
 			{
 				port = Integer.parseInt(args[0]);
 			}
-			catch (Exception e)
+			// program ends
+			catch(NumberFormatException e) 
 			{
-				System.err.println("Argument must be an int (" + e + ")");
+				System.err.println("Argument must be an int (" + args[0] + ")");
+				e.printStackTrace();
 				return;
 			}
 		}
+		// web server will start
 		WebServer server = new WebServer();
 		if (!server.start(port))
 		{

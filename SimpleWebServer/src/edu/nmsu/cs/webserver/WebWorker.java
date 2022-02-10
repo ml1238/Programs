@@ -2,6 +2,7 @@ package edu.nmsu.cs.webserver;
 
 /**
  * Web worker: an object of this class executes in its own new thread to receive and respond to a
+
  * single HTTP request. After the constructor the object executes on its "run" method, and leaves
  * when it is done.
  *
@@ -55,11 +56,15 @@ public class WebWorker implements Runnable
 		{
 			InputStream is = socket.getInputStream();
 			OutputStream os = socket.getOutputStream();
-			readHTTPRequest(is);
-			writeHTTPHeader(os, "text/html");
-			writeContent(os);
-			os.flush();
-			socket.close();
+			
+			// There is always a good way and a bad way to do this
+			readHTTPRequest(is);					// ALL THE WORK
+			writeHTTPHeader(os, "text/html");		// FOR ASSIGNMENT 1
+			writeContent(os);						// HAPPENS ON THESE 3 LINES
+			
+			
+			os.flush(); // this is to ensure everything is converted to bits/bytes
+			socket.close(); // closes connection
 		}
 		catch (Exception e)
 		{
@@ -72,19 +77,32 @@ public class WebWorker implements Runnable
 	/**
 	 * Read the HTTP request header.
 	 **/
-	private void readHTTPRequest(InputStream is)
+	private String readHTTPRequest(InputStream is)
 	{
 		String line;
+		String result = "/default"; // /default is based on browser, Chrome is /favicon.ico
 		BufferedReader r = new BufferedReader(new InputStreamReader(is));
 		while (true)
 		{
+			// this is the spot where we can find what to return back to the browser
+			// look at request lines
 			try
 			{
 				while (!r.ready())
 					Thread.sleep(1);
 				line = r.readLine();
+				
+				// check if line request is default path and store the path
+				if ( line.contains("GET") && !line.contains("GET / HTTP/1.1") ) {
+						System.out.println("Request Path: " + line.substring(3,line.length() - 8));
+						result = line.substring(4, line.length() - 8);
+				}
+				
+				
+				// this will print the error in red!
+				// .out. will print this in black or white
 				System.err.println("Request line: (" + line + ")");
-				if (line.length() == 0)
+				if ( line.length() == 0 )
 					break;
 			}
 			catch (Exception e)
@@ -93,7 +111,7 @@ public class WebWorker implements Runnable
 				break;
 			}
 		}
-		return;
+		return result;
 	}
 
 	/**
@@ -109,29 +127,48 @@ public class WebWorker implements Runnable
 		Date d = new Date();
 		DateFormat df = DateFormat.getDateTimeInstance();
 		df.setTimeZone(TimeZone.getTimeZone("GMT"));
-		os.write("HTTP/1.1 200 OK\n".getBytes());
+		os.write("HTTP/1.1 200 OK\n".getBytes()); // 200 if right, 404 if wrong
 		os.write("Date: ".getBytes());
 		os.write((df.format(d)).getBytes());
 		os.write("\n".getBytes());
-		os.write("Server: Jon's very own server\n".getBytes());
+		os.write("Server: Mike's very own server\n".getBytes());
 		// os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
-		// os.write("Content-Length: 438\n".getBytes());
+		//os.write("Content-Length: 438\n".getBytes());
 		os.write("Connection: close\n".getBytes());
-		os.write("Content-Type: ".getBytes());
+		os.write("Content-Type: ".getBytes()); // for program 2
 		os.write(contentType.getBytes());
 		os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
+		return;
+	}
+	
+	/**
+	 * Write the 404 HTTP message
+	 * @param os is the OutputStream
+	 * @param locationString is the string MIME content type
+	 */
+	private void write404(OutputStream os, String locationString ) throws Exception {
+		
+		os.write(("HTTP/1.0 404 Not Found/r/n"+
+				  "Content-type: text/html/r/n/r/n"+
+				  "<!DOCTYPE html PUBLIC \"-//IETF//"+
+				  "DTD HTML 2.0//EN\"><html><head><meta"+
+				  " http-equiv=\"content-type\" content=\"text/html;"+
+				  " charset=windows-1252\"><title>Slack: 404 Not Found</title></head><body>" +
+				  "<h1>Not Found <h1><p>The requested URL " + locationString +
+				  " was not found on this server.</p></body></html>").getBytes());
 		return;
 	}
 
 	/**
 	 * Write the data content to the client network connection. This MUST be done after the HTTP
 	 * header has been written out.
-	 * 
+	 * +
 	 * @param os
 	 *          is the OutputStream object to write to
 	 **/
 	private void writeContent(OutputStream os) throws Exception
 	{
+		// loop here until file is completely read
 		os.write("<html><head></head><body>\n".getBytes());
 		os.write("<h3>My web server works!</h3>\n".getBytes());
 		os.write("</body></html>\n".getBytes());
