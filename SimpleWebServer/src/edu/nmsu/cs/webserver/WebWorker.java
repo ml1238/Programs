@@ -30,11 +30,12 @@ import java.net.Socket;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.io.File;
 
 public class WebWorker implements Runnable
 {
-
-	private Socket socket;
+	private static boolean exist = false; // global variable that checks if the requested line exists as a file
+	private Socket socket; 
 
 	/**
 	 * Constructor: must have a valid open socket
@@ -58,10 +59,16 @@ public class WebWorker implements Runnable
 			OutputStream os = socket.getOutputStream();
 			
 			// There is always a good way and a bad way to do this
-			readHTTPRequest(is);					// ALL THE WORK
+			String destination = readHTTPRequest(is);					// ALL THE WORK
 			writeHTTPHeader(os, "text/html");		// FOR ASSIGNMENT 1
-			writeContent(os);						// HAPPENS ON THESE 3 LINES
 			
+			// if destination is default, write default message
+			if ( exist && destination.length() == 0 )
+				writeContent(os);
+			else if ( exist && destination.length() > 0 )
+				writeCustom(os);
+			else if ( !exist )
+				write404(os, destination);
 			
 			os.flush(); // this is to ensure everything is converted to bits/bytes
 			socket.close(); // closes connection
@@ -80,7 +87,7 @@ public class WebWorker implements Runnable
 	private String readHTTPRequest(InputStream is)
 	{
 		String line;
-		String result = "/default"; // /default is based on browser, Chrome is /favicon.ico
+		String result = "/default"; // /default is based on browser, Chrome is /favicon.ico=
 		BufferedReader r = new BufferedReader(new InputStreamReader(is));
 		while (true)
 		{
@@ -93,16 +100,34 @@ public class WebWorker implements Runnable
 				line = r.readLine();
 				
 				// check if line request is default path and store the path
-				if ( line.contains("GET") && !line.contains("GET / HTTP/1.1") ) {
-						System.out.println("Request Path: " + line.substring(3,line.length() - 8));
-						result = line.substring(4, line.length() - 8);
+				if ( line.contains("GET") && !line.contains("/favicon.ico") ) {
+						System.out.println("Request Path: " + line.substring(5,line.length() - 9));
+						result = line.substring(5, line.length() - 9);
+						File fileExist = new File(result);
+						
+						// if result is default, write default content
+						if ( result.length() == 0 ) {
+							System.out.println("File is default");
+							exist = true;
+						} // end if
+						
+						// if result is a path, check if file exists in path
+						// if file exists in path, change exist to true and show file
+						if ( fileExist.isFile() ) {
+							System.out.println("File exists, directing user to file and 200 OK");
+							exist = true;
+						} // end else if
+						
+						// if file does not exist in path, keep exist at false and produce 404 NotFound
+						else
+							System.out.println("File does not exists, directing user to 404 NotFound");
 				}
 				
 				
 				// this will print the error in red!
 				// .out. will print this in black or white
 				System.err.println("Request line: (" + line + ")");
-				if ( line.length() == 0 )
+				if ( line.length() == 0 ) 
 					break;
 			}
 			catch (Exception e)
@@ -127,7 +152,10 @@ public class WebWorker implements Runnable
 		Date d = new Date();
 		DateFormat df = DateFormat.getDateTimeInstance();
 		df.setTimeZone(TimeZone.getTimeZone("GMT"));
-		os.write("HTTP/1.1 200 OK\n".getBytes()); // 200 if right, 404 if wrong
+		if ( exist )
+			os.write("HTTP/1.1 200 OK\n".getBytes()); // 200 if right, 404 if wrong
+		else
+			os.write("HTTP/1.1 404 Not Found\n".getBytes());
 		os.write("Date: ".getBytes());
 		os.write((df.format(d)).getBytes());
 		os.write("\n".getBytes());
@@ -157,6 +185,18 @@ public class WebWorker implements Runnable
 				  "<h1>Not Found <h1><p>The requested URL " + locationString +
 				  " was not found on this server.</p></body></html>").getBytes());
 		return;
+	}
+	
+	/**
+	 * Write custom HTTP message based on provided path
+	 * @param os is the OutputStream
+	 */
+	private void writeCustom(OutputStream os) throws Exception {
+		
+		os.write("<html><head></head><body>\n".getBytes());
+		os.write("<p>Hello world, the current date is: February 10, 2022. The server is: ml1238's Server.</p>".getBytes());
+		os.write("</body></html>\n".getBytes());
+		
 	}
 
 	/**
