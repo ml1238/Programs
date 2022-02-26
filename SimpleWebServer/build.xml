@@ -1,4 +1,4 @@
-<project name = "Program1" default = "compile">
+<project name = "Program1" default = "run" basedir = ".">
 
     <description>
         This is the buildfile for Program1: SimpleWebServer. This was
@@ -7,6 +7,7 @@
 
     <property name = "src" location = "src/"/>
     <property name = "build" location = "bin/"/>
+    <property name = "www" location = "www"/>
 
     <target name = "compile" depends = "clean"
 
@@ -19,7 +20,7 @@
     <target name= "run" depends = "compile"
 
             description = "Starts the web server with a default port of 8083">
-        <java fork = "true" classname = "edu.nmsu.cs.webserver.WebServer" classpath = "${build}">
+        <java fork = "true" classname = "edu.nmsu.cs.webserver.WebServer" classpath = "${build}" dir = "${www}">
         <arg value = "8083"/>
         </java>
 

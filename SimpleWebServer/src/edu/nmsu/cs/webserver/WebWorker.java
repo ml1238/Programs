@@ -22,6 +22,7 @@ package edu.nmsu.cs.webserver;
  *
  **/
 
+import java.io.*;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -35,6 +36,8 @@ import java.io.File;
 public class WebWorker implements Runnable
 {
 	private static boolean exist = false; // global variable that checks if the requested line exists as a file
+	private static boolean nothtml = false; // global variable that checks if the requested line is an http file
+	private static boolean error404 = false; // global variable that checks if the requested line is a 404 error
 	private Socket socket; 
 
 	/**
@@ -57,27 +60,44 @@ public class WebWorker implements Runnable
 		{
 			InputStream is = socket.getInputStream();
 			OutputStream os = socket.getOutputStream();
-			
+
 			// There is always a good way and a bad way to do this
-			String destination = readHTTPRequest(is);					// ALL THE WORK
-			writeHTTPHeader(os, "text/html");		// FOR ASSIGNMENT 1
+			String destination = readHTTPRequest(is);
 			
-			// if destination is default, write default message
-			if ( exist && destination.length() == 0 )
+			// if destination is default and exist, write default message
+			if ( exist && destination.length() == 0 ) {
+				writeHTTPHeader(os, "text/html");
 				writeContent(os);
-			else if ( exist && destination.length() > 0 )
-				writeCustom(os);
-			else if ( !exist )
-				write404(os, destination);
+			} // end if
+			// if destination is custom and exist, serve destination file
+			else if ( exist && !nothtml ) {
+				writeHTTPHeader(os, "text/html");
+				writeCustomHtml(os, destination);
+			} // end if
+			// file exists but is not an .html file
+			else if ( !exist && nothtml ) {
+				writeHTTPHeader(os, "image/gif");
+				writeCustom(os, destination);
+			} // end if
+			// if destination is not default and does not exist, serve 404 error
+			else if ( error404 ) {
+				writeHTTPHeader(os, "text/html");
+				write404(os);
+			}
 			
+			// set values back to false to ensure that user can go from non-html files to html files without error
+			exist = false;
+			nothtml = false;
+			error404 = false;
 			os.flush(); // this is to ensure everything is converted to bits/bytes
 			socket.close(); // closes connection
+			
 		}
 		catch (Exception e)
 		{
 			System.err.println("Output error: " + e);
 		}
-		System.err.println("Done handling connection.");
+		 System.err.println("Done handling connection.");
 		return;
 	}
 
@@ -98,13 +118,21 @@ public class WebWorker implements Runnable
 				while (!r.ready())
 					Thread.sleep(1);
 				line = r.readLine();
-				
+
 				// check if line request is default path and store the path
 				if ( line.contains("GET") && !line.contains("/favicon.ico") ) {
-						System.out.println("Request Path: " + line.substring(5,line.length() - 9));
-						result = line.substring(5, line.length() - 9);
-						File fileExist = new File(result);
+						String lineSub = line.substring(5,line.length() - 9);
+						System.out.println("Request Path: " + lineSub);
 						
+						// for default
+						if ( lineSub.length() == 0 )
+							result = lineSub;
+						// for non-default
+						else
+							result = lineSub;
+						
+						File fileExist = new File(result);
+
 						// if result is default, write default content
 						if ( result.length() == 0 ) {
 							System.out.println("File is default");
@@ -113,14 +141,25 @@ public class WebWorker implements Runnable
 						
 						// if result is a path, check if file exists in path
 						// if file exists in path, change exist to true and show file
-						if ( fileExist.isFile() ) {
+						else if ( fileExist.isFile() ) {
+							
 							System.out.println("File exists, directing user to file and 200 OK");
 							exist = true;
+							
+							// check if requested file is an html file, if so do nothing
+							// if not, then server user the file without reading
+							if ( !line.contains(".html") && result.length() != 0 ) {
+								exist = false;
+								nothtml = true;
+							} // end if
+								
 						} // end else if
 						
 						// if file does not exist in path, keep exist at false and produce 404 NotFound
-						else
+						else if ( !(fileExist.isFile()) ){
 							System.out.println("File does not exists, directing user to 404 NotFound");
+							error404 = true;
+						} // end else
 				}
 				
 				
@@ -152,7 +191,7 @@ public class WebWorker implements Runnable
 		Date d = new Date();
 		DateFormat df = DateFormat.getDateTimeInstance();
 		df.setTimeZone(TimeZone.getTimeZone("GMT"));
-		if ( exist )
+		if ( exist || nothtml )
 			os.write("HTTP/1.1 200 OK\n".getBytes()); // 200 if right, 404 if wrong
 		else
 			os.write("HTTP/1.1 404 Not Found\n".getBytes());
@@ -174,28 +213,58 @@ public class WebWorker implements Runnable
 	 * @param os is the OutputStream
 	 * @param locationString is the string MIME content type
 	 */
-	private void write404(OutputStream os, String locationString ) throws Exception {
+	private void write404(OutputStream os) throws IOException {
 		
-		os.write(("HTTP/1.0 404 Not Found/r/n"+
-				  "Content-type: text/html/r/n/r/n"+
-				  "<!DOCTYPE html PUBLIC \"-//IETF//"+
-				  "DTD HTML 2.0//EN\"><html><head><meta"+
-				  " http-equiv=\"content-type\" content=\"text/html;"+
-				  " charset=windows-1252\"><title>Slack: 404 Not Found</title></head><body>" +
-				  "<h1>Not Found <h1><p>The requested URL " + locationString +
-				  " was not found on this server.</p></body></html>").getBytes());
-		return;
+		FileInputStream fis = new FileInputStream("404.html");
+		
+		try {
+			int arraysize = fis.available();
+			byte byteArray[] = new byte[arraysize];
+			fis.read(byteArray);
+			os.write(byteArray);
+		}
+		catch ( Exception ex ) {
+			System.out.println(ex.getMessage());
+		}
+		
+	} // end write404
+	
+	/**
+	 * Write custom HTTP message based on provided path
+	 * @param os is the OutputStream
+	 */
+	private void writeCustomHtml(OutputStream os, String locationString) throws Exception {
+		
+		FileInputStream fis = new FileInputStream(locationString);
+		
+		try {
+			int arraysize = fis.available();
+			byte byteArray[] = new byte[arraysize];
+			fis.read(byteArray);
+			os.write(byteArray);
+		}
+		catch ( Exception ex ) {
+			System.out.println(ex.getMessage());
+		}
 	}
 	
 	/**
 	 * Write custom HTTP message based on provided path
 	 * @param os is the OutputStream
 	 */
-	private void writeCustom(OutputStream os) throws Exception {
+	private void writeCustom(OutputStream os, String locationString) throws Exception {
 		
-		os.write("<html><head></head><body>\n".getBytes());
-		os.write("<p>Hello world, the current date is: February 10, 2022. The server is: ml1238's Server.</p>".getBytes());
-		os.write("</body></html>\n".getBytes());
+		FileInputStream fis = new FileInputStream(locationString);
+		
+		try {
+			int arraysize = fis.available();
+			byte byteArray[] = new byte[arraysize];
+			fis.read(byteArray);
+			os.write(byteArray);
+		}
+		catch ( Exception ex ) {
+			System.out.println(ex.getMessage());
+		}
 		
 	}
 
