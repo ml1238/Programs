@@ -11,16 +11,20 @@ package edu.nmsu.cs.scoring;
  * @author Jon Cook, Ph.D.
  * 
  ***/
+ 
+ // Updated by: Mike Lopez III
+ // CS 371 - Software Development
+ // P3 (Coverage)
+ // 04/13/2022
 
 public class RacingScore1
 {
-
+   
+   // declare global variables
 	int	score1;
-
 	int	score2;
-
 	int	score3;
-
+   
 	public RacingScore1()
 	{
 		score1 = 0;
@@ -47,15 +51,21 @@ public class RacingScore1
 		s = (score1 + score2 + score3) - s;
 		return s;
 	}
-
+   
+   // driver main
 	public static void main(String args[])
 	{
+      // declare variables
 		int s1, s2, s3;
+      
+      // ensure user provides exactly three inputs
 		if (args.length != 3)
 		{
 			System.err.println("Error: must supply three arguments!");
 			return;
 		}
+      
+      // assign three inputs to s1, s2, and s3
 		try
 		{
 			s1 = Integer.parseInt(args[0]);
@@ -67,8 +77,13 @@ public class RacingScore1
 			System.err.println("Error: arguments must be integers!");
 			return;
 		}
+      
+      // create new RacingScore1 object score
 		RacingScore1 score = new RacingScore1();
+      
+      // assign object scores to s1, s2, and s3
 		score.recordScores(s1, s2, s3);
+      // output the two highest scores
 		System.out.println("Overall score: " + score.overallScore());
 		return;
 	}
