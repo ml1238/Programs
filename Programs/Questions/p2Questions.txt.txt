@@ -1,0 +1,7 @@
+1. I estimate that this will take me roughly 5 hours to finish.
+2. Actual Estimated Time:
+	Thought/Design: .5 hours
+	Programming: 2 hours
+	Debugging: 4 hours
+	TOTAL:6.5
+3. Percent Accuracy of Original Estimate: 76.92
