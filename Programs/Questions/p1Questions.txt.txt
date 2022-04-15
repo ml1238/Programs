@@ -1,7 +1,0 @@
-1. Rough Estimate (before assignment): 3 Hours
-2. Estimated Time (after assignment):
-	*Thought/Design: Initially 15 minutes, turned into 3 hours
-	*Programming: 2 Hours
-	*Debugging: 3 Hours
-	*TOTAL: 8 Hours
-3. My originial Estimate was accurate to 37.5% correct, a failing grade.
