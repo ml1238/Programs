@@ -10,8 +10,8 @@ public class Circle1 extends Circle
 
 	public boolean intersects(Circle other)
 	{
-		if (Math.abs(center.x - other.center.x) < radius &&
-				Math.abs(center.y - other.center.y) < radius)
+      // TO DO fix this 
+		if (Math.abs(center.x - other.center.x) <= radius && Math.abs(center.y - other.center.y) <= radius)
 			return true;
 		return false;
 	}
